@@ -9,7 +9,6 @@ class OneTaggerPlugin(BeetsPlugin):
         self.register_listener('import', self.run_onetagger)
 
     def run_onetagger(self, lib, paths):
-        print(f'  [OneTagger Plugin] Import complete, starting OneTagger.')
 
         onetagger_executable = self.config['executable'].get()
         onetagger_config = self.config['config'].get()
