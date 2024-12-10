@@ -36,6 +36,7 @@ class OneTaggerPlugin(BeetsPlugin):
             self._log.info(
                 f'Processing file {index} of {total_items}: {post_import_path}'
             )
+            print(f'  [OneTagger] Starting processing {index}/{total_items}: {post_import_path}')
             try:
                 command = [
                     onetagger_executable, 'autotagger', '--config',
@@ -87,3 +88,4 @@ class OneTaggerPlugin(BeetsPlugin):
                     f'Error running OneTagger for {post_import_path}: {str(e)}'
                 )
         self._log.info('OneTagger processing complete')
+        print(f'  [OneTagger] Completed processing all {total_items} imported files')
