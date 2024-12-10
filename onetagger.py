@@ -53,21 +53,30 @@ class OneTaggerPlugin(BeetsPlugin):
                 success_message_seen = False
                 # Log stdout in real-time
                 for stdout_line in iter(process.stdout.readline, ""):
-                    self._log.info(f"OneTagger output: {stdout_line.strip()}")
-                    if "successfully" in stdout_line.lower():
+                    line = stdout_line.strip()
+                    self._log.info(f"OneTagger output: {line}")
+                    
+                    # Show important status messages to user
+                    if any(key in line.lower() for key in ["matching", "found", "successfully"]):
+                        print(f"  [OneTagger] {line}")
+                    if "successfully" in line.lower():
                         success_message_seen = True
                 process.stdout.close()
+                
                 # Log stderr in real-time
                 for stderr_line in iter(process.stderr.readline, ""):
-                    self._log.info(f"OneTagger error: {stderr_line.strip()}")
+                    line = stderr_line.strip()
+                    self._log.info(f"OneTagger error: {line}")
+                    # Show errors to user
+                    if not line.startswith(("Debug:", "Info:")):
+                        print(f"  [OneTagger Error] {line}")
                 process.stderr.close()
+                
                 # Wait for the process to finish and get the return code
                 return_code = process.wait()
                 if return_code == 0:
                     if not success_message_seen:
-                        print(
-                            f'  [OneTagger Plugin] Successfully processed: {post_import_path}'
-                        )
+                        print(f'  [OneTagger] Successfully processed: {post_import_path}')
                 else:
                     self._log.error(
                         f'OneTagger failed for {post_import_path}.')
