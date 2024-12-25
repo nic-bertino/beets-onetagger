@@ -1,6 +1,6 @@
 # Beets OneTagger Plugin
 
-This Beets plugin integrates OneTagger functionality into your Beets workflow, automatically running OneTagger after importing new music files.
+This plugin passes beets-imported files to OneTagger to provide more robust and customized metadata.
 
 ## Installation
 
@@ -21,10 +21,16 @@ onetagger:
 
 Replace `path/to/onetagger-cli` with the actual path to your OneTagger CLI executable, and `path/to/onetagger/config.json` with the path to your OneTagger configuration file.
 
-Both executable and config settings are required for the plugin to function correctly.
+Both executable and config settings are required for the plugin to function correctly. You can test OneTagger's CLI separately from beets to ensure it's configured correctly.
 
-## Usage
-Once installed and configured, the plugin will automatically run OneTagger on newly imported music files. No additional steps are required during normal usage.
+## Example workflow
 
-## Logging
-The plugin logs its activities, including successful processing and any errors encountered. Check your Beets log file for details on OneTagger operations.
+beets import -> write discogs style/genre via onetagger -> dj software
+
+beets is my primary organizer and metadata manager for vinyl rips. When DJing, I use smart crates in Serato/Engine/Rekordbox, which read the metadata and can create crates based on metadata conditions. These conditions might include:
+* Genres ("Funk/Soul")
+* Year (1979-1982, 2015-present, 2024)
+* Style ("Disco", "Soul", "Boogie")
+* BPM (Under 100BPM, over 130BPM)
+
+Discogs has the _most consistent_ genre and style information. I append both to the Genre tag.
