@@ -3,6 +3,31 @@ import subprocess
 import itertools
 import threading
 import time
+from datetime import datetime
+
+class ConsoleFormatter:
+    """Handles consistent console output formatting"""
+    COLORS = {
+        'header': '\033[1;38;5;39m',
+        'success': '\033[1;38;5;76m',
+        'error': '\033[1;38;5;196m',
+        'warning': '\033[1;38;5;214m',
+        'info': '\033[1;38;5;147m',
+        'reset': '\033[0m'
+    }
+    
+    @staticmethod
+    def format_message(message, style='info', prefix='onetagger'):
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        prefix_color = ConsoleFormatter.COLORS.get(style, ConsoleFormatter.COLORS['info'])
+        return f"{prefix_color}[{timestamp}] {prefix} ❯ {message}{ConsoleFormatter.COLORS['reset']}"
+    
+    @staticmethod
+    def progress_bar(current, total, width=30):
+        percentage = current / total
+        filled = int(width * percentage)
+        bar = '█' * filled + '░' * (width - filled)
+        return f"[{bar}] {current}/{total} ({percentage:.1%})"
 
 
 class OneTaggerPlugin(BeetsPlugin):
@@ -10,17 +35,20 @@ class OneTaggerPlugin(BeetsPlugin):
     def __init__(self):
         super(OneTaggerPlugin, self).__init__()
         self.register_listener('import_task_files', self.run_onetagger)
+        self.formatter = ConsoleFormatter()
 
     def run_onetagger(self, task):
-
         onetagger_executable = self.config['executable'].get()
         onetagger_config = self.config['config'].get()
-        def format_onetagger_message(message):
-            return f"\033[1;38;5;256;48;5;65m bonetagger ➜ \033[22;38;5;256;48;5;65m {message} \033[0m"
         if not onetagger_executable or not onetagger_config:
-            self._log.error(
-                'OneTagger executable or config path not set in configuration.'
-            )
+            print(self.formatter.format_message(
+                'Configuration error: OneTagger executable or config path not set!', 
+                style='error'
+            ))
+            print(self.formatter.format_message(
+                'Please check your config.yaml file and ensure both paths are set correctly.',
+                style='info'
+            ))
             return
 
         # Get all items that were just imported
@@ -30,24 +58,24 @@ class OneTaggerPlugin(BeetsPlugin):
         self._log.debug(f'Total imported items: {total_items}')
 
         def spinner():
-            colors = itertools.cycle(['\033[37m', '\033[90m', '\033[37;1m', '\033[38;5;250m', '\033[38;5;245m', '\033[38;5;240m'])
-            spinner_chars = itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'])
+            spinner_chars = itertools.cycle(['◜', '◠', '◝', '◞', '◡', '◟'])
             while self.spinner_running:
-                color = next(colors)
                 char = next(spinner_chars)
-                print('\r' + format_onetagger_message(f'{color}{char}'), end='', flush=True)
-                time.sleep(0.2)
-                print('\r', end='', flush=True)
+                status = self.formatter.format_message(
+                    f"{char} Processing...", 
+                    style='info'
+                )
+                print(f"\r{status}", end='', flush=True)
+                time.sleep(0.1)
 
         for index, item in enumerate(imported_items, start=1):
             post_import_path = item.path
             if isinstance(post_import_path, bytes):
                 post_import_path = post_import_path.decode('utf-8')
 
-            self._log.info(
-                f'Processing file {index} of {total_items}: {post_import_path}'
-            )
-            print(format_onetagger_message(f'Tagging {index}/{total_items}: {post_import_path}'))
+            filename = post_import_path.split('/')[-1]
+            progress = self.formatter.progress_bar(index, total_items)
+            print(f"\r{self.formatter.format_message(f'{progress} Processing: {filename}', style='header')}", end='', flush=True)
             try:
                 command = [
                     onetagger_executable, 'autotagger', '--config',
@@ -75,10 +103,12 @@ class OneTaggerPlugin(BeetsPlugin):
                     self._log.info(f"OneTagger output: {line}")
                     
                     # Show important status messages to user
-                    if any(key in line.lower() for key in ["matching", "found", "successfully"]):
-                        print(f"\r{format_onetagger_message(line)}")
-
-                    if "successfully" in line.lower():
+                    if "matching" in line.lower():
+                        print(self.formatter.format_message(f"🔍 {line}", style='info'))
+                    elif "found" in line.lower():
+                        print(self.formatter.format_message(f"✓ {line}", style='success'))
+                    elif "successfully" in line.lower():
+                        print(self.formatter.format_message(f"✨ {line}", style='success'))
                         success_message_seen = True
                 process.stdout.close()
                 
@@ -88,7 +118,7 @@ class OneTaggerPlugin(BeetsPlugin):
                     self._log.info(f"OneTagger error: {line}")
                     # Show errors to user
                     if not line.startswith(("Debug:", "Info:")):
-                        print(f"\r  [OneTagger Error] {line}")
+                        print(self.formatter.format_message(f"❌ {line}", style='error'))
                 process.stderr.close()
                 
                 # Wait for the process to finish and get the return code
@@ -97,7 +127,17 @@ class OneTaggerPlugin(BeetsPlugin):
                 spinner_thread.join()
                 if return_code == 0:
                     if not success_message_seen:
-                        print(f'\r{format_onetagger_message(f"Finished tagging: {post_import_path}")}')
+                        # Get terminal width for proper line clearing
+                        try:
+                            import shutil
+                            terminal_width = shutil.get_terminal_size().columns
+                        except:
+                            terminal_width = 120  # fallback width
+                        
+                        # Clear the entire line
+                        print('\r' + ' ' * terminal_width + '\r', end='', flush=True)
+                        filename = post_import_path.split('/')[-1]
+                        print(f"\r{self.formatter.format_message(f'✅ {filename}', style='success')}", end='\n', flush=True)
 
                 else:
                     self._log.error(
@@ -109,4 +149,5 @@ class OneTaggerPlugin(BeetsPlugin):
                     f'Error running OneTagger for {post_import_path}: {str(e)}'
                 )
         self._log.info('OneTagger processing complete')
-        print(format_onetagger_message(f'Completed! {total_items} tagged'))
+        summary = f"🎉 All done! Successfully processed {total_items} files"
+        print("\n" + self.formatter.format_message(summary, style='success'))
