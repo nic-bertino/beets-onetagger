@@ -17,7 +17,7 @@ class ConsoleFormatter:
     }
     
     @staticmethod
-    def format_message(message, style='info', prefix='onetagger'):
+    def format_message(message, style='info', prefix='beetbridge'):
         timestamp = datetime.now().strftime('%H:%M:%S')
         prefix_color = ConsoleFormatter.COLORS.get(style, ConsoleFormatter.COLORS['info'])
         return f"{prefix_color}[{timestamp}] {prefix} ❯ {message}{ConsoleFormatter.COLORS['reset']}"
@@ -30,10 +30,10 @@ class ConsoleFormatter:
         return f"[{bar}] {current}/{total} ({percentage:.1%})"
 
 
-class OneTaggerPlugin(BeetsPlugin):
+class BeetBridgePlugin(BeetsPlugin):
 
     def __init__(self):
-        super(OneTaggerPlugin, self).__init__()
+        super(BeetBridgePlugin, self).__init__()
         self.register_listener('import_task_files', self.run_onetagger)
         self.formatter = ConsoleFormatter()
 
@@ -58,7 +58,7 @@ class OneTaggerPlugin(BeetsPlugin):
         self._log.debug(f'Total imported items: {total_items}')
 
         def spinner():
-            spinner_chars = itertools.cycle(['◜', '◠', '◝', '◞', '◡', '◟'])
+            spinner_chars = itertools.cycle(['⠋','⠙','⠚','⠞','⠖','⠦','⠴','⠲','⠳','⠓'])
             while self.spinner_running:
                 char = next(spinner_chars)
                 status = self.formatter.format_message(
@@ -149,5 +149,5 @@ class OneTaggerPlugin(BeetsPlugin):
                     f'Error running OneTagger for {post_import_path}: {str(e)}'
                 )
         self._log.info('OneTagger processing complete')
-        summary = f"🎉 All done! Successfully processed {total_items} files"
+        summary = f"🎉 All done! beetbridge successfully processed {total_items} files"
         print("\n" + self.formatter.format_message(summary, style='success'))
