@@ -35,9 +35,21 @@ class BeetBridgePlugin(BeetsPlugin):
     def __init__(self):
         super(BeetBridgePlugin, self).__init__()
         self.register_listener('import_task_files', self.run_onetagger)
+        self.register_listener('import_end', self.show_final_summary)
         self.formatter = ConsoleFormatter()
+        self.total_processed = 0
+        self.albums_processed = 0
 
-    def run_onetagger(self, task):
+    def run_onetagger(self, task, session):
+        # Skip singleton tasks (non-album imports) if needed
+        if task.is_album:
+            self._log.debug(f'Processing album task: {task.paths}')
+        else:
+            self._log.debug('Processing singleton task')
+            # You may want to keep or remove this return depending on whether 
+            # you want to process singleton imports
+            # return
+
         onetagger_executable = self.config['executable'].get()
         onetagger_config = self.config['config'].get()
         if not onetagger_executable or not onetagger_config:
@@ -51,11 +63,29 @@ class BeetBridgePlugin(BeetsPlugin):
             ))
             return
 
-        # Get all items that were just imported
-        imported_items = task.items
+        # Get all items from the task - FIX: access items as a list property, not a callable
+        imported_items = task.items  # Changed from list(task.items())
         total_items = len(imported_items)
+        
+        if total_items == 0:
+            self._log.debug('No items to process in this task')
+            return
 
-        self._log.debug(f'Total imported items: {total_items}')
+        self._log.debug(f'Total items in this task: {total_items}')
+        
+        # Determine album name for better logging
+        album_name = "Unknown Album"
+        if hasattr(task, 'album') and task.album and hasattr(task.album, 'album'):
+            album_name = task.album.album
+        elif imported_items and hasattr(imported_items[0], 'album'):
+            album_name = imported_items[0].album
+            
+        # Print album processing header
+        self.albums_processed += 1
+        print(self.formatter.format_message(
+            f"Processing album {self.albums_processed}: {album_name} ({total_items} tracks)",
+            style='header'
+        ))
 
         def spinner():
             spinner_chars = itertools.cycle(['⠋','⠙','⠚','⠞','⠖','⠦','⠴','⠲','⠳','⠓'])
@@ -138,7 +168,7 @@ class BeetBridgePlugin(BeetsPlugin):
                         print('\r' + ' ' * terminal_width + '\r', end='', flush=True)
                         filename = post_import_path.split('/')[-1]
                         print(f"\r{self.formatter.format_message(f'✅ {filename}', style='success')}", end='\n', flush=True)
-
+                    self.total_processed += 1
                 else:
                     self._log.error(
                         f'OneTagger failed for {post_import_path}.')
@@ -148,6 +178,14 @@ class BeetBridgePlugin(BeetsPlugin):
                 self._log.error(
                     f'Error running OneTagger for {post_import_path}: {str(e)}'
                 )
-        self._log.info('OneTagger processing complete')
-        summary = f"🎉 All done! beetbridge successfully processed {total_items} files"
-        print("\n" + self.formatter.format_message(summary, style='success'))
+        self._log.info(f'OneTagger processing complete for album: {album_name}')
+        album_summary = f"✨ Album {self.albums_processed} completed: {album_name} ({total_items} tracks)"
+        print(self.formatter.format_message(album_summary, style='success'))
+    
+    def show_final_summary(self, lib, session):
+        if self.total_processed > 0:
+            summary = f"🎉 All done! beetbridge successfully processed {self.total_processed} files across {self.albums_processed} albums"
+            print("\n" + self.formatter.format_message(summary, style='success'))
+            # Reset counters for next import session
+            self.total_processed = 0
+            self.albums_processed = 0
