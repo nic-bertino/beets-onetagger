@@ -17,20 +17,39 @@ Add the following to your Beets configuration file (usually `config.yaml`):
 beetbridge:
     executable: path/to/onetagger-cli
     config: path/to/onetagger/config.json
+    process_singletons: true    # Optional: process non-album files (default: true)
+    timeout: 300                # Optional: maximum seconds per file (default: 300)
 ```
 
 Replace `path/to/onetagger-cli` with the actual path to your OneTagger CLI executable, and `path/to/onetagger/config.json` with the path to your OneTagger configuration file.
 
 Both executable and config settings are required for the plugin to function correctly. You can test OneTagger's CLI separately from beets to ensure it's configured correctly.
 
-## Example workflow
+## User Interface
 
-beets import -> write discogs style/genre via onetagger -> dj software
+When [Rich](https://github.com/Textualize/rich) is installed, the plugin displays a live-updating table during tagging. Track rows turn green as they complete, and a Match column appears when OneTagger returns accuracy data. Failed tracks are shown in red.
 
-beets is my primary organizer and metadata manager for vinyl rips. When DJing, I use smart crates in Serato/Engine/Rekordbox, which read the metadata and can create crates based on metadata conditions. These conditions might include:
-* Genres ("Funk/Soul")
-* Year (1979-1982, 2015-present, 2024)
-* Style ("Disco", "Soul", "Boogie")
-* BPM (Under 100BPM, over 130BPM)
+```
+beetbridge: Changing
 
-Discogs has the _most consistent_ genre and style information. I append both to the Genre tag.
+  Changing
+  Pressure
+  Always
+  Said You Wouldn't Leave Again
+  You Know What I Like
+  Where Do We Go From Here
+  Love Soldier
+  Problem Solver
+
+8/8 tracks  16s
+```
+
+Without Rich, the plugin falls back to plain text:
+
+```
+beetbridge: Changing
+  [1/8] Changing 2s
+  [2/8] Pressure 2s
+  ...
+  8 tracks  16s
+```
