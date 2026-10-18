@@ -1,3 +1,5 @@
+Notice: this plugin is archived — OneTagger is no longer maintained, and the discogs plugin shipping with latest versions of beets can do most of this out of the box. I'll be shipping a new plugin soon that enhances discogs-provided metadata even further for the specific use of smart crates/playlists in DJ software.
+
 # beetbridge
 
 This plugin passes beets-imported files to OneTagger to provide more robust and customized metadata.
